@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mental Health Platform Design System - Calming, Supportive, Accessible */
+
+@layer base {
+  :root {
+    /* Core calming background */
+    --background: 210 20% 98%;
+    --foreground: 210 11% 15%;
+
+    /* Card system with soft shadows */
+    --card: 0 0% 100%;
+    --card-foreground: 210 11% 15%;
+
+    /* Popover elements */
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 11% 15%;
+
+  /* Peer Support Platform Colors - Soft Blues & Purples */
+  --primary: 243 75% 59%;        /* Soft blue #6366F1 */
+  --primary-foreground: 0 0% 98%;
+  --primary-soft: 243 75% 94%;   /* Light blue #E0E7FF */
+
+  --secondary: 249 58% 60%;      /* Purple #8B5CF6 */
+  --secondary-foreground: 0 0% 98%;
+  --secondary-soft: 249 58% 94%;
+
+  --accent: 217 91% 60%;         /* Bright blue for accents */
+  --accent-foreground: 0 0% 98%;
+  --accent-soft: 217 91% 94%;
+
+  --success: 142 65% 35%;        /* Gentle green */
+  --success-foreground: 0 0% 98%;
+  --success-soft: 142 30% 88%;
+
+  --warning: 38 84% 45%;         /* Warm amber */
+  --warning-foreground: 0 0% 98%;
+  --warning-soft: 38 30% 88%;
+
+  --destructive: 348 70% 45%;    /* Muted red */
+  --destructive-foreground: 0 0% 98%;
+  --destructive-soft: 348 30% 88%;
+
+    /* UI Elements */
+    --border: 210 20% 90%;
+    --input: 210 20% 94%;
+    --ring: 213 89% 64%;
+
+    /* Radius for soft, approachable feel */
+    --radius: 1rem;
+
+  /* Gradients - Peer Support Theme */
+  --gradient-hero: linear-gradient(135deg, hsl(243 75% 59%), hsl(249 58% 60%));
+  --gradient-calm: linear-gradient(180deg, hsl(243 75% 98%), hsl(249 58% 95%));
+  --gradient-primary: linear-gradient(135deg, hsl(243 75% 59%), hsl(217 91% 60%));
+
+    /* Shadows for depth and comfort */
+    --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    --shadow-large: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+
+    /* Animation timing for calm interactions */
+    --transition-calm: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-gentle: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Mental Health Platform Components */
+  
+  .wellness-gradient {
+    background: var(--gradient-hero);
+  }
+  
+  .calm-gradient {
+    background: var(--gradient-calm);
+  }
+  
+  .primary-gradient {
+    background: var(--gradient-primary);
+  }
+  
+  .shadow-gentle {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-comfort {
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .shadow-embrace {
+    box-shadow: var(--shadow-large);
+  }
+  
+  .transition-calm {
+    transition: var(--transition-calm);
+  }
+  
+  .transition-gentle {
+    transition: var(--transition-gentle);
+  }
+  
+  /* Chat bubble animations */
+  .chat-bubble-enter {
+    animation: bubble-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  /* Wellness card hover effects */
+  .wellness-card {
+    @apply bg-card rounded-2xl p-6 shadow-gentle transition-calm hover:shadow-comfort hover:-translate-y-1;
+  }
+  
+  /* Risk level indicators */
+  .risk-low {
+    @apply bg-success/10 text-success border-success/20;
+  }
+  
+  .risk-medium {
+    @apply bg-warning/10 text-warning border-warning/20;
+  }
+  
+  .risk-high {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
+  }
+  
+  /* Button variants for mental health context */
+  .btn-wellness {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-4 font-medium shadow-gentle hover:shadow-comfort transition-calm;
+  }
+  
+  .btn-support {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full px-6 py-3 font-medium shadow-gentle hover:shadow-comfort transition-calm;
+  }
+  
+  .btn-emergency {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full px-8 py-4 font-semibold shadow-gentle hover:shadow-comfort transition-calm;
+  }
+}
+
+@layer utilities {
+  /* Animation keyframes */
+  @keyframes bubble-slide-in {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes gentle-fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes peaceful-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  /* Utility animations */
+  .animate-bubble-in {
+    animation: bubble-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .animate-gentle-fade {
+    animation: gentle-fade-in 0.3s ease-out;
+  }
+  
+  .animate-peaceful-pulse {
+    animation: peaceful-pulse 2s ease-in-out infinite;
+  }
+}
