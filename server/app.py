@@ -1,4 +1,6 @@
-\
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, decode_token
@@ -195,6 +197,4 @@ def on_disconnect():
     pass
 
 if __name__ == "__main__":
-    import eventlet
-    eventlet.monkey_patch()
     socketio.run(app, host="0.0.0.0", port=8000)
