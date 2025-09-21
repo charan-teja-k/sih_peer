@@ -1,0 +1,26 @@
+# version attribute removed as it is obsolete
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    env_file:
+      - server/.env
+    depends_on: [postgres, mongo, redis]
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [mongodata:/data/db]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+volumes:
+  pgdata: {}
+  mongodata: {}
