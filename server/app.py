@@ -24,7 +24,9 @@ app.config["JWT_SECRET_KEY"] = JWT_SECRET
 # CORS for Vite dev
 CORS_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5175", 
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5175",
     CORS_ORIGIN
 ]
 CORS(app, resources={r"/*": {"origins": CORS_ORIGINS}}, supports_credentials=True)

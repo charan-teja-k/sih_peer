@@ -6,7 +6,7 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 5173,
     proxy: {
       "/auth": "http://localhost:8000",
       "/users": "http://localhost:8000",
