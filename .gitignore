@@ -1,0 +1,24 @@
+# Environment variables
+server/.env
+
+# Python cache
+server/__pycache__/
+*.pyc
+*.pyo
+
+# Node modules
+mental-health/node_modules/
+
+# Build outputs
+mental-health/dist/
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Database files
+*.db
+*.sqlite
