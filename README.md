@@ -44,6 +44,28 @@ MONGO_DB=app
 REDIS_URL=redis://localhost:6379/0
 ```
 
+## Testing & Development
+
+The codebase includes demo components for testing the integration:
+
+### Demo Routes
+- **Auth Demo**: http://localhost:5173/auth-demo - Test registration, login, and token management
+- **Chat Demo**: http://localhost:5173/chat-demo - Test real-time Socket.IO connection
+
+### Testing Flow
+1. Start backend: `docker compose up --build` or run locally
+2. Start frontend: `cd mental-health && npm run dev`
+3. Visit demo routes to test:
+   - Register/Login at `/auth-demo`
+   - Test real-time chat at `/chat-demo` (login first)
+   - Check health endpoint connectivity
+
+### API Integration
+The frontend uses centralized utilities:
+- `src/lib/api.ts` - API URL and request helpers with auth headers
+- `src/lib/auth.ts` - JWT token management and auth functions  
+- `src/lib/chat.ts` - Socket.IO connection with authentication
+
 ## Frontend integration (React + Vite)
 1) Create `mental-health/.env`:
 ```

@@ -20,7 +20,12 @@ app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = JWT_SECRET
 
 # CORS for Vite dev
-CORS(app, resources={r"/*": {"origins": [CORS_ORIGIN]}}, supports_credentials=True)
+CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    CORS_ORIGIN
+]
+CORS(app, resources={r"/*": {"origins": CORS_ORIGINS}}, supports_credentials=True)
 
 jwt = JWTManager(app)
 
