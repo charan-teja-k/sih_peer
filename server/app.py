@@ -339,15 +339,40 @@ def save_questions():
         doc["tags"].append(f"course_{course_tag}")
     
     try:
-        ins = questions_col.insert_one(doc)
-        print(f"[DEBUG] Saved ML-based assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, ML Prediction={predicted_class} (confidence: {confidence:.3f})")
+        # Check if user already has an assessment
+        existing_assessment = questions_col.find_one({"userId": uid})
+        
+        if existing_assessment:
+            # Update existing assessment (reassessment)
+            # Preserve the original creation timestamp but update all other fields
+            doc["original_timestamp"] = existing_assessment.get("timestamp", doc["timestamp"])
+            doc["assessment_count"] = existing_assessment.get("assessment_count", 1) + 1
+            doc["previous_risk_level"] = existing_assessment.get("ml_prediction", {}).get("risk_level", "unknown")
+            
+            result = questions_col.replace_one({"userId": uid}, doc)
+            assessment_id = str(existing_assessment["_id"])
+            action = "updated"
+            print(f"[DEBUG] Updated ML-based assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, ML Prediction={predicted_class} (confidence: {confidence:.3f}) - Reassessment #{doc['assessment_count']}")
+        else:
+            # Create new assessment (first time)
+            doc["assessment_count"] = 1
+            doc["original_timestamp"] = doc["timestamp"]
+            
+            ins = questions_col.insert_one(doc)
+            assessment_id = str(ins.inserted_id)
+            action = "created"
+            print(f"[DEBUG] Created ML-based assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, ML Prediction={predicted_class} (confidence: {confidence:.3f}) - First assessment")
+        
         return {
-            "id": str(ins.inserted_id), 
+            "id": assessment_id,
+            "action": action,
+            "assessmentCount": doc["assessment_count"],
             "riskLevel": risk_level,
             "predictedClass": predicted_class,
             "confidence": confidence,
             "modelUsed": doc["ml_prediction"]["model_used"],
-            "topFeatures": ml_features[:3]  # Return top 3 features for display
+            "topFeatures": ml_features[:3],  # Return top 3 features for display
+            "previousRiskLevel": doc.get("previous_risk_level")
         }, 201
     except Exception as e:
         print(f"[ERROR] Failed to save assessment: {e}")
@@ -362,7 +387,9 @@ def list_questions():
     uid = get_jwt_identity()
     try:
         items = []
-        for d in questions_col.find({"userId": uid}).sort("_id", -1).limit(50):
+        # Since we now update instead of insert, there should only be one record per user
+        # But we'll still support the old structure for backward compatibility
+        for d in questions_col.find({"userId": uid}).sort("_id", -1).limit(10):
             d["_id"] = str(d["_id"])
             # Include user details in the response for backward compatibility
             if "userEmail" not in d:
@@ -377,6 +404,13 @@ def list_questions():
                             d["userAge"] = user_row.age
                 except Exception as e:
                     print(f"[WARNING] Could not fetch user details for old record: {e}")
+            
+            # Add assessment metadata for frontend
+            d["isReassessment"] = d.get("assessment_count", 1) > 1
+            d["assessmentCount"] = d.get("assessment_count", 1)
+            if "previous_risk_level" in d:
+                d["previousRiskLevel"] = d["previous_risk_level"]
+                
             items.append(d)
         return {"items": items}
     except Exception as e:

@@ -24,6 +24,12 @@ interface RiskAssessmentResultsProps {
       model_used?: string;
     };
     tags?: string[];
+    // Reassessment fields
+    isReassessment?: boolean;
+    assessmentCount?: number;
+    previousRiskLevel?: string;
+    assessment_count?: number;
+    previous_risk_level?: string;
   };
   onResourceSelect: (resource: string) => void;
 }
@@ -169,16 +175,36 @@ export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessm
   const confidence = mlPrediction?.confidence ? (mlPrediction.confidence * 100).toFixed(1) : null;
   const topFeatures = mlPrediction?.top_features?.slice(0, 3) || [];
 
+  // Get reassessment info
+  const isReassessment = results.isReassessment || (results.assessment_count && results.assessment_count > 1);
+  const assessmentCount = results.assessmentCount || results.assessment_count || 1;
+  const previousRiskLevel = results.previousRiskLevel || results.previous_risk_level;
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
         {/* Student Info Header */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold mb-2">Your Wellness Assessment Results</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            Your Wellness Assessment Results
+            {isReassessment && (
+              <span className="text-sm font-normal text-muted-foreground block mt-1">
+                📊 Reassessment #{assessmentCount}
+                {previousRiskLevel && (
+                  <span className="ml-2">
+                    • Previous: {previousRiskLevel.charAt(0).toUpperCase() + previousRiskLevel.slice(1)} Risk
+                  </span>
+                )}
+              </span>
+            )}
+          </h1>
           <div className="flex justify-center gap-6 text-sm text-muted-foreground mb-4">
             <span>📚 Course: {getCourseDisplay(results.course)}</span>
             <span>🎓 Year: {results.year}</span>
             <span>📊 Questions Answered: {totalQuestions}</span>
+            {isReassessment && (
+              <span>🔄 Assessment #{assessmentCount}</span>
+            )}
           </div>
         </div>
         
@@ -213,10 +239,27 @@ export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessm
               <div className="bg-primary/5 rounded-lg p-4 mb-4">
                 <h4 className="font-semibold text-sm text-primary mb-2">
                   🤖 AI-Powered Assessment
+                  {isReassessment && (
+                    <span className="text-xs font-normal text-muted-foreground ml-2">
+                      • Updated Analysis
+                    </span>
+                  )}
                 </h4>
                 <p className="text-sm text-muted-foreground mb-3">
                   This result was generated using advanced machine learning analysis of your responses.
                   {mlPrediction?.model_used === 'random_forest' && ' Our AI model identified key patterns in your answers to provide personalized insights.'}
+                  {isReassessment && previousRiskLevel && (
+                    <span className="block mt-2 text-xs">
+                      📈 Compared to your previous assessment ({previousRiskLevel} risk), 
+                      {previousRiskLevel !== riskLevel ? (
+                        <span className="font-medium">
+                          {' '}your risk level has changed to {riskLevel}.
+                        </span>
+                      ) : (
+                        <span> your risk level remains consistent.</span>
+                      )}
+                    </span>
+                  )}
                 </p>
                 
                 {topFeatures.length > 0 && (
