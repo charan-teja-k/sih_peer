@@ -11,6 +11,20 @@ interface AssessmentResults {
   year: string;
   answers: Record<string, string>;
   responses: Record<string, string>;
+  ml_prediction?: {
+    risk_level: 'low' | 'medium' | 'high';
+    predicted_class: string;
+    confidence: number;
+    top_features?: Array<{
+      feature: string;
+      importance: number;
+      value: number;
+      contribution: number;
+      question_text: string;
+    }>;
+    model_used?: string;
+  };
+  tags?: string[];
 }
 
 interface VideoResource {

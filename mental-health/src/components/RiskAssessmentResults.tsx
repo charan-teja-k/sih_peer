@@ -10,18 +10,45 @@ interface RiskAssessmentResultsProps {
     year: string; 
     answers: Record<string, string>; 
     responses: Record<string, string>;
+    ml_prediction?: {
+      risk_level: 'low' | 'medium' | 'high';
+      predicted_class: string;
+      confidence: number;
+      top_features?: Array<{
+        feature: string;
+        importance: number;
+        value: number;
+        contribution: number;
+        question_text: string;
+      }>;
+      model_used?: string;
+    };
+    tags?: string[];
   };
   onResourceSelect: (resource: string) => void;
 }
 
 type RiskLevel = 'low' | 'medium' | 'high';
 
-// Calculate risk level based on text responses
-const getRiskLevel = (answers: Record<string, string>): RiskLevel => {
-  let riskScore = 0;
-  const totalQuestions = Object.keys(answers).length;
+// Get risk level from ML prediction or fallback to tag-based detection
+const getRiskLevel = (results: RiskAssessmentResultsProps['results']): RiskLevel => {
+  // First try to use ML prediction
+  if (results.ml_prediction?.risk_level) {
+    return results.ml_prediction.risk_level;
+  }
   
-  Object.values(answers).forEach(answer => {
+  // Fallback to tags-based detection (for backward compatibility)
+  if (results.tags) {
+    if (results.tags.includes('high_risk')) return 'high';
+    if (results.tags.includes('moderate_risk')) return 'medium';
+    if (results.tags.includes('low_risk')) return 'low';
+  }
+  
+  // Final fallback to simple calculation (legacy)
+  let riskScore = 0;
+  const totalQuestions = Object.keys(results.answers).length;
+  
+  Object.values(results.answers).forEach(answer => {
     switch (answer) {
       case "Not at all":
         riskScore += 0;
@@ -38,7 +65,6 @@ const getRiskLevel = (answers: Record<string, string>): RiskLevel => {
     }
   });
   
-  // Calculate percentage of maximum possible score
   const maxPossibleScore = totalQuestions * 3;
   const riskPercentage = (riskScore / maxPossibleScore) * 100;
   
@@ -126,7 +152,7 @@ const getRiskConfig = (level: RiskLevel) => {
 };
 
 export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessmentResultsProps) => {
-  const riskLevel = getRiskLevel(results.answers);
+  const riskLevel = getRiskLevel(results);
   const config = getRiskConfig(riskLevel);
   const IconComponent = config.icon;
 
@@ -136,6 +162,12 @@ export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessm
     acc[answer] = (acc[answer] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Get ML prediction info for display
+  const mlPrediction = results.ml_prediction;
+  const hasMLPrediction = !!mlPrediction;
+  const confidence = mlPrediction?.confidence ? (mlPrediction.confidence * 100).toFixed(1) : null;
+  const topFeatures = mlPrediction?.top_features?.slice(0, 3) || [];
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -165,11 +197,45 @@ export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessm
             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-4 ${config.color}`}>
               <IconComponent className="w-5 h-5" />
               <span className="font-semibold">{config.title}</span>
+              {hasMLPrediction && confidence && (
+                <span className="text-xs bg-background/50 px-2 py-1 rounded-full ml-2">
+                  {confidence}% confidence
+                </span>
+              )}
             </div>
             
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-lg text-muted-foreground leading-relaxed mb-4">
               {config.description}
             </p>
+
+            {/* ML Prediction Information */}
+            {hasMLPrediction && (
+              <div className="bg-primary/5 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold text-sm text-primary mb-2">
+                  🤖 AI-Powered Assessment
+                </h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  This result was generated using advanced machine learning analysis of your responses.
+                  {mlPrediction?.model_used === 'random_forest' && ' Our AI model identified key patterns in your answers to provide personalized insights.'}
+                </p>
+                
+                {topFeatures.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Key factors influencing this assessment:
+                    </p>
+                    <div className="space-y-1">
+                      {topFeatures.map((feature, index) => (
+                        <div key={index} className="text-xs text-muted-foreground flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                          {feature.question_text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="flex justify-center gap-8 mt-6 text-sm text-muted-foreground">
               <div className="text-center">

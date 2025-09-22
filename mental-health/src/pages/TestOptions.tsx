@@ -20,6 +20,19 @@ interface TestData {
   timestamp: string;
   calculatedRiskScore?: number;
   tags?: string[];
+  ml_prediction?: {
+    risk_level: 'low' | 'medium' | 'high';
+    predicted_class: string;
+    confidence: number;
+    top_features?: Array<{
+      feature: string;
+      importance: number;
+      value: number;
+      contribution: number;
+      question_text: string;
+    }>;
+    model_used?: string;
+  };
 }
 
 export default function TestOptions() {
@@ -82,8 +95,11 @@ export default function TestOptions() {
     }
   };
 
-  // Get risk level from tags or calculate from score
+  // Get risk level from ML prediction or tags
   const getRiskLevel = () => {
+    if (testData?.ml_prediction?.predicted_class) {
+      return testData.ml_prediction.predicted_class;
+    }
     if (testData?.tags) {
       if (testData.tags.includes('high_risk')) return 'High Risk';
       if (testData.tags.includes('moderate_risk')) return 'Medium Risk';
@@ -113,7 +129,9 @@ export default function TestOptions() {
           course: testData?.course || '',
           year: testData?.year || '',
           answers: testData?.answers || {},
-          responses: testData?.responses || {}
+          responses: testData?.responses || {},
+          ml_prediction: testData?.ml_prediction,
+          tags: testData?.tags
         }
       } 
     });

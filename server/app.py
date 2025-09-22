@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 from pymongo import MongoClient
 import redis, os
 from dotenv import load_dotenv
+from ml_predictor import predict_mental_health_risk
 
 # Load environment variables from .env file
 load_dotenv()
@@ -243,6 +244,67 @@ def save_questions():
     # Calculate timestamp
     from datetime import datetime
     
+    # Prepare user data for ML model
+    user_data = {
+        "age": user_row.age,
+        "course": payload.get("course", ""),
+        "year": payload.get("year", "")
+    }
+    
+    # Get questionnaire answers for ML model
+    answers = payload.get("answers", {})
+    
+    # Use ML model to predict risk
+    try:
+        ml_result = predict_mental_health_risk(user_data, answers)
+        risk_level = ml_result.get("risk_level", "medium")
+        predicted_class = ml_result.get("predicted_class", "Medium")
+        confidence = ml_result.get("confidence", 0.5)
+        ml_features = ml_result.get("top_contributing_features", [])
+        
+        print(f"[DEBUG] ML Prediction for user {uid}: {predicted_class} (confidence: {confidence:.3f})")
+        
+        # Map risk level to tags
+        risk_tag_mapping = {
+            "low": "low_risk",
+            "medium": "moderate_risk", 
+            "high": "high_risk"
+        }
+        risk_tag = risk_tag_mapping.get(risk_level, "moderate_risk")
+        
+    except Exception as e:
+        print(f"[ERROR] ML prediction failed, using fallback: {e}")
+        # Fallback to simple scoring if ML fails
+        risk_score = 0
+        if answers:
+            for answer_text in answers.values():
+                if answer_text == "Not at all":
+                    risk_score += 0
+                elif answer_text == "Sometimes":
+                    risk_score += 1
+                elif answer_text == "Often":
+                    risk_score += 2
+                elif answer_text == "Almost every day":
+                    risk_score += 3
+        
+        max_possible_score = len(answers) * 3 if answers else 45
+        risk_percentage = (risk_score / max_possible_score) * 100 if max_possible_score > 0 else 0
+        
+        if risk_percentage >= 60:
+            risk_level = "high"
+            risk_tag = "high_risk"
+        elif risk_percentage >= 30:
+            risk_level = "medium"
+            risk_tag = "moderate_risk"
+        else:
+            risk_level = "low" 
+            risk_tag = "low_risk"
+        
+        predicted_class = risk_level.capitalize()
+        confidence = 0.5
+        ml_features = []
+        ml_result = {"fallback_used": True}
+    
     doc = {
         "userId": uid,
         "userEmail": user_row.email,
@@ -250,39 +312,25 @@ def save_questions():
         "userAge": user_row.age,
         "course": payload.get("course", ""),
         "year": payload.get("year", ""),
-        "answers": payload.get("answers", {}),  # Text responses to Q1-Q15
+        "answers": answers,  # Text responses to Q1-Q15
         "responses": payload.get("responses", {}),  # All responses including course/year
         "formVersion": payload.get("formVersion", "v2"),
         "timestamp": datetime.now(),
         "completed_at": datetime.now().isoformat(),
         "tags": payload.get("tags", []),
+        # ML prediction results
+        "ml_prediction": {
+            "risk_level": risk_level,
+            "predicted_class": predicted_class,
+            "confidence": confidence,
+            "top_features": ml_features,
+            "model_used": "random_forest" if not ml_result.get("fallback_used") else "fallback",
+            "prediction_timestamp": datetime.now().isoformat()
+        }
     }
     
-    # Calculate risk score from text responses for tagging
-    answers = doc["answers"]
-    risk_score = 0
-    if answers:
-        for answer_text in answers.values():
-            if answer_text == "Not at all":
-                risk_score += 0
-            elif answer_text == "Sometimes":
-                risk_score += 1
-            elif answer_text == "Often":
-                risk_score += 2
-            elif answer_text == "Almost every day":
-                risk_score += 3
-    
-    doc["calculatedRiskScore"] = risk_score
-    max_possible_score = len(answers) * 3 if answers else 45
-    risk_percentage = (risk_score / max_possible_score) * 100 if max_possible_score > 0 else 0
-    
-    # Add automatic tags based on risk percentage
-    if risk_percentage >= 60:
-        doc["tags"].append("high_risk")
-    elif risk_percentage >= 30:
-        doc["tags"].append("moderate_risk")
-    else:
-        doc["tags"].append("low_risk")
+    # Add automatic tags based on ML prediction
+    doc["tags"].append(risk_tag)
     
     # Add course-based tag
     if doc["course"]:
@@ -292,8 +340,15 @@ def save_questions():
     
     try:
         ins = questions_col.insert_one(doc)
-        print(f"[DEBUG] Saved assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, Risk Score={risk_score}/{max_possible_score} ({risk_percentage:.1f}%)")
-        return {"id": str(ins.inserted_id), "riskScore": risk_score, "riskPercentage": risk_percentage, "riskLevel": doc["tags"][-2] if len(doc["tags"]) >= 2 else "unknown"}, 201
+        print(f"[DEBUG] Saved ML-based assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, ML Prediction={predicted_class} (confidence: {confidence:.3f})")
+        return {
+            "id": str(ins.inserted_id), 
+            "riskLevel": risk_level,
+            "predictedClass": predicted_class,
+            "confidence": confidence,
+            "modelUsed": doc["ml_prediction"]["model_used"],
+            "topFeatures": ml_features[:3]  # Return top 3 features for display
+        }, 201
     except Exception as e:
         print(f"[ERROR] Failed to save assessment: {e}")
         return {"msg": "Failed to save questions"}, 500
