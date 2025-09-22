@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import TestOptions from "./pages/TestOptions";
+import PreviousResults from "./pages/PreviousResults";
 import SignIn from "./components/SignIn";
 import Register from "./components/Register";
 
@@ -57,6 +59,16 @@ const AppRoutes = () => (
     <Route path="/" element={
       <ProtectedRoute>
         <Index />
+      </ProtectedRoute>
+    } />
+    <Route path="/test-options" element={
+      <ProtectedRoute>
+        <TestOptions />
+      </ProtectedRoute>
+    } />
+    <Route path="/previous-results" element={
+      <ProtectedRoute>
+        <PreviousResults />
       </ProtectedRoute>
     } />
     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -29,7 +29,7 @@ export const WelcomeHero = ({ onStartScreening }: WelcomeHeroProps) => {
                 <Heart className="w-8 h-8 text-primary" />
               </div>
               <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
-                MindSpace
+                Mind Companion
               </h1>
             </div>
             <p className="text-xl text-muted-foreground font-medium">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { WelcomeHero } from "@/components/WelcomeHero";
 import { ChatbotScreening } from "@/components/ChatbotScreening";
 import { RiskAssessmentResults } from "@/components/RiskAssessmentResults";
@@ -23,16 +24,28 @@ const Index = () => {
   const [currentState, setCurrentState] = useState<AppState>('welcome');
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
   const { logout, user } = useAuth();
+  const location = useLocation();
+
+  // Check if we received previous test results from navigation (for "continue with old results" flow)
+  useEffect(() => {
+    if (location.state?.results) {
+      const previousResults = location.state.results as AssessmentResults;
+      setAssessmentResults(previousResults);
+      setCurrentState('results');
+      // Clear the state to prevent it from persisting on browser back/forward
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // SEO: Set document title based on current state
   useEffect(() => {
     const titles = {
-      welcome: 'MindSpace - Your AI Mental Health Companion',
-      screening: 'Wellness Assessment - MindSpace',
-      results: 'Your Results - MindSpace', 
-      resources: 'Resource Hub - MindSpace',
-      'peer-support': 'Peer Support Community - MindSpace',
-      'counselor-booking': 'Book Counselor - MindSpace'
+      welcome: 'Mind Companion - Your AI Mental Health Companion',
+      screening: 'Wellness Assessment - Mind Companion',
+      results: 'Your Results - Mind Companion', 
+      resources: 'Resource Hub - Mind Companion',
+      'peer-support': 'Peer Support Community - Mind Companion',
+      'counselor-booking': 'Book Counselor - Mind Companion'
     };
     document.title = titles[currentState];
   }, [currentState]);

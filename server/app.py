@@ -327,6 +327,54 @@ def list_questions():
     except Exception as e:
         return {"msg": "Failed to fetch questions"}, 500
 
+@app.get("/questions/check-history")
+@jwt_required()
+def check_test_history():
+    """Check if the current user has taken the test before and return their latest results"""
+    if questions_col is None:
+        return {"msg": "Questions database unavailable"}, 503
+    if not engine:
+        return {"msg": "SQL database unavailable"}, 503
+        
+    uid = get_jwt_identity()
+    
+    # Get user email from SQL database
+    try:
+        with engine.begin() as conn:
+            user_row = conn.execute(text("SELECT email FROM users WHERE id=:id"), {"id": uid}).fetchone()
+        if not user_row:
+            return {"msg": "User not found"}, 404
+        user_email = user_row.email
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch user email: {e}")
+        return {"msg": "Failed to fetch user details"}, 500
+    
+    try:
+        # Check if user has any test records by email (most recent first)
+        latest_test = questions_col.find_one(
+            {"userEmail": user_email}, 
+            sort=[("_id", -1)]
+        )
+        
+        if latest_test:
+            # User has taken the test before
+            latest_test["_id"] = str(latest_test["_id"])
+            return {
+                "hasTakenTest": True, 
+                "latestTest": latest_test,
+                "message": "User has previous test results"
+            }
+        else:
+            # User has not taken the test
+            return {
+                "hasTakenTest": False, 
+                "message": "User has not taken the test before"
+            }
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to check test history: {e}")
+        return {"msg": "Failed to check test history"}, 500
+
 @app.get("/admin/questions")
 @jwt_required()
 def list_all_questions():
