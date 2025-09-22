@@ -3,6 +3,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface User {
   id: number;
   email: string;
+  name?: string;
+  age?: number;
+  phone_number?: string;
 }
 
 interface AuthContextType {
@@ -10,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string, age: number, phoneNumber: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -34,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch('http://localhost:8000/auth/verify', {
+          const response = await fetch('http://localhost:8001/users/me', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -42,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (response.ok) {
             const userData = await response.json();
-            setUser((userData as { user: User }).user);
+            setUser(userData.user);
           } else {
             localStorage.removeItem('token');
           }
@@ -59,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const response = await fetch('http://localhost:8001/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.accessToken);
         setUser(data.user);
         return true;
       }
@@ -80,19 +83,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (email: string, password: string): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string, age: number, phoneNumber: string): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:8000/auth/register', {
+      const response = await fetch('http://localhost:8001/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          name, 
+          age, 
+          phone_number: phoneNumber 
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.accessToken);
         setUser(data.user);
         return true;
       }

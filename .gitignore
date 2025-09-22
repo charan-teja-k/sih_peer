@@ -1,5 +1,6 @@
 # Environment variables
 server/.env
+mental-health/.env
 
 # Python cache
 server/__pycache__/

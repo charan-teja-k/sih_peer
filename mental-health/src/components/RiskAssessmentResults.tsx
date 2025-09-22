@@ -5,16 +5,50 @@ import mindfulnessImage from "@/assets/mindfulness-resources.jpg";
 import peerSupportImage from "@/assets/peer-support.jpg";
 
 interface RiskAssessmentResultsProps {
-  scores: { phq9: number; gad7: number };
+  results: { 
+    course: string; 
+    year: string; 
+    answers: Record<string, string>; 
+    responses: Record<string, string>;
+  };
   onResourceSelect: (resource: string) => void;
 }
 
 type RiskLevel = 'low' | 'medium' | 'high';
 
-const getRiskLevel = (phq9: number, gad7: number): RiskLevel => {
-  if (phq9 >= 15 || gad7 >= 15) return 'high';
-  if (phq9 >= 5 || gad7 >= 5) return 'medium';
+// Calculate risk level based on text responses
+const getRiskLevel = (answers: Record<string, string>): RiskLevel => {
+  let riskScore = 0;
+  const totalQuestions = Object.keys(answers).length;
+  
+  Object.values(answers).forEach(answer => {
+    switch (answer) {
+      case "Not at all":
+        riskScore += 0;
+        break;
+      case "Sometimes":
+        riskScore += 1;
+        break;
+      case "Often":
+        riskScore += 2;
+        break;
+      case "Almost every day":
+        riskScore += 3;
+        break;
+    }
+  });
+  
+  // Calculate percentage of maximum possible score
+  const maxPossibleScore = totalQuestions * 3;
+  const riskPercentage = (riskScore / maxPossibleScore) * 100;
+  
+  if (riskPercentage >= 60) return 'high';
+  if (riskPercentage >= 30) return 'medium';
   return 'low';
+};
+
+const getCourseDisplay = (course: string): string => {
+  return course; // Now we store the actual course names directly
 };
 
 const getRiskConfig = (level: RiskLevel) => {
@@ -91,14 +125,31 @@ const getRiskConfig = (level: RiskLevel) => {
   }
 };
 
-export const RiskAssessmentResults = ({ scores, onResourceSelect }: RiskAssessmentResultsProps) => {
-  const riskLevel = getRiskLevel(scores.phq9, scores.gad7);
+export const RiskAssessmentResults = ({ results, onResourceSelect }: RiskAssessmentResultsProps) => {
+  const riskLevel = getRiskLevel(results.answers);
   const config = getRiskConfig(riskLevel);
   const IconComponent = config.icon;
+
+  // Calculate some statistics from text responses
+  const totalQuestions = Object.keys(results.answers).length;
+  const responseStats = Object.values(results.answers).reduce((acc, answer) => {
+    acc[answer] = (acc[answer] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
+        {/* Student Info Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2">Your Wellness Assessment Results</h1>
+          <div className="flex justify-center gap-6 text-sm text-muted-foreground mb-4">
+            <span>📚 Course: {getCourseDisplay(results.course)}</span>
+            <span>🎓 Year: {results.year}</span>
+            <span>📊 Questions Answered: {totalQuestions}</span>
+          </div>
+        </div>
+        
         {/* Results Header */}
         <div className="text-center mb-8 animate-gentle-fade">
           <div className="inline-flex items-center gap-3 mb-4">
@@ -122,12 +173,16 @@ export const RiskAssessmentResults = ({ scores, onResourceSelect }: RiskAssessme
             
             <div className="flex justify-center gap-8 mt-6 text-sm text-muted-foreground">
               <div className="text-center">
-                <div className="font-semibold text-foreground">{scores.phq9}/27</div>
-                <div>Depression Scale</div>
+                <div className="font-semibold text-foreground">{totalQuestions}</div>
+                <div>Questions Answered</div>
               </div>
               <div className="text-center">
-                <div className="font-semibold text-foreground">{scores.gad7}/21</div>
-                <div>Anxiety Scale</div>
+                <div className="font-semibold text-foreground">{responseStats["Almost every day"] || 0}</div>
+                <div>High Frequency</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-foreground">{responseStats["Not at all"] || 0}</div>
+                <div>No Issues</div>
               </div>
             </div>
           </Card>

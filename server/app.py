@@ -70,8 +70,10 @@ try:
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            age INT NOT NULL,
+            phone_number VARCHAR(20) NOT NULL,
             display_name VARCHAR(255),
-            name VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """))
@@ -95,7 +97,7 @@ except Exception as e:
 try:
     mongo = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
     mdb = mongo[MONGO_DB]
-    questions_col = mdb["questions"]
+    questions_col = mdb["student_mental_questions"]
     # Test connection with timeout
     mongo.admin.command('ping')
     print("[SUCCESS] Connected to MongoDB")
@@ -137,17 +139,36 @@ def register():
     data = request.get_json() or {}
     email = data.get("email")
     pw = data.get("password")
+    name = data.get("name")
+    age = data.get("age")
+    phone_number = data.get("phone_number")
+    
+    # Validate required fields
     if not email or not pw:
         return {"msg": "email/password required"}, 400
+    if not name or not age or not phone_number:
+        return {"msg": "name, age, and phone number are required"}, 400
+    
+    # Validate age
+    try:
+        age = int(age)
+        if age < 16 or age > 100:
+            return {"msg": "Age must be between 16 and 100"}, 400
+    except ValueError:
+        return {"msg": "Age must be a valid number"}, 400
+    
+    # Validate phone number (basic validation)
+    if len(phone_number) < 10:
+        return {"msg": "Phone number must be at least 10 digits"}, 400
 
     pwd_hash = bcrypt.hash(pw)
     print(f"[DEBUG] Attempting to register user: {email}")
     try:
         with engine.begin() as conn:
-            # Insert without specifying id - let MySQL auto-increment handle it
+            # Insert with all required fields
             result = conn.execute(text(
-                "INSERT INTO users (email,password_hash) VALUES (:e,:p)"
-            ), {"e": email, "p": pwd_hash})
+                "INSERT INTO users (email, password_hash, name, age, phone_number) VALUES (:e, :p, :n, :a, :ph)"
+            ), {"e": email, "p": pwd_hash, "n": name, "a": age, "ph": phone_number})
             # Get the auto-generated ID
             uid = result.lastrowid
         print(f"[DEBUG] User {email} registered successfully with ID: {uid}")
@@ -158,8 +179,8 @@ def register():
         else:
             return {"msg": f"Database error: {str(e)}"}, 500
 
-    token = create_access_token(identity=str(uid), additional_claims={"email": email})
-    return {"accessToken": token, "user": {"id": str(uid), "email": email}}
+    token = create_access_token(identity=str(uid), additional_claims={"email": email, "name": name})
+    return {"accessToken": token, "user": {"id": str(uid), "email": email, "name": name, "age": age, "phone_number": phone_number}}
 
 @app.post("/auth/login")
 def login():
@@ -173,12 +194,12 @@ def login():
         
     try:
         with engine.begin() as conn:
-            row = conn.execute(text("SELECT id, password_hash FROM users WHERE email=:e"), {"e": email}).fetchone()
+            row = conn.execute(text("SELECT id, email, name, age, phone_number, password_hash FROM users WHERE email=:e"), {"e": email}).fetchone()
         if not row or not bcrypt.verify(pw, row.password_hash):
             return {"msg": "Invalid email or password"}, 401
 
-        token = create_access_token(identity=str(row.id), additional_claims={"email": email})
-        return {"accessToken": token, "user": {"id": str(row.id), "email": email}}
+        token = create_access_token(identity=str(row.id), additional_claims={"email": email, "name": row.name})
+        return {"accessToken": token, "user": {"id": str(row.id), "email": email, "name": row.name, "age": row.age, "phone_number": row.phone_number}}
     except Exception as e:
         return {"msg": "Login failed"}, 500
 
@@ -191,7 +212,7 @@ def me():
     uid = get_jwt_identity()
     try:
         with engine.begin() as conn:
-            res = conn.execute(text("SELECT id, email, display_name FROM users WHERE id=:id"), {"id": uid}).mappings().first()
+            res = conn.execute(text("SELECT id, email, name, age, phone_number, display_name FROM users WHERE id=:id"), {"id": uid}).mappings().first()
         if not res:
             return {"msg": "User not found"}, 404
         return {"user": dict(res)}
@@ -201,28 +222,86 @@ def me():
 @app.post("/questions")
 @jwt_required()
 def save_questions():
-    if not questions_col:
+    if questions_col is None:
         return {"msg": "Questions database unavailable"}, 503
+    if not engine:
+        return {"msg": "SQL database unavailable"}, 503
         
     uid = get_jwt_identity()
     payload = request.get_json() or {}
+    
+    # Fetch user details from SQL database
+    try:
+        with engine.begin() as conn:
+            user_row = conn.execute(text("SELECT email, name, age FROM users WHERE id=:id"), {"id": uid}).fetchone()
+        if not user_row:
+            return {"msg": "User not found"}, 404
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch user details: {e}")
+        return {"msg": "Failed to fetch user details"}, 500
+    
+    # Calculate timestamp
+    from datetime import datetime
+    
     doc = {
         "userId": uid,
-        "answers": payload.get("answers", {}),
-        "formVersion": payload.get("formVersion", "v1"),
-        "riskScore": payload.get("riskScore", 0),
+        "userEmail": user_row.email,
+        "userName": user_row.name,
+        "userAge": user_row.age,
+        "course": payload.get("course", ""),
+        "year": payload.get("year", ""),
+        "answers": payload.get("answers", {}),  # Text responses to Q1-Q15
+        "responses": payload.get("responses", {}),  # All responses including course/year
+        "formVersion": payload.get("formVersion", "v2"),
+        "timestamp": datetime.now(),
+        "completed_at": datetime.now().isoformat(),
         "tags": payload.get("tags", []),
     }
+    
+    # Calculate risk score from text responses for tagging
+    answers = doc["answers"]
+    risk_score = 0
+    if answers:
+        for answer_text in answers.values():
+            if answer_text == "Not at all":
+                risk_score += 0
+            elif answer_text == "Sometimes":
+                risk_score += 1
+            elif answer_text == "Often":
+                risk_score += 2
+            elif answer_text == "Almost every day":
+                risk_score += 3
+    
+    doc["calculatedRiskScore"] = risk_score
+    max_possible_score = len(answers) * 3 if answers else 45
+    risk_percentage = (risk_score / max_possible_score) * 100 if max_possible_score > 0 else 0
+    
+    # Add automatic tags based on risk percentage
+    if risk_percentage >= 60:
+        doc["tags"].append("high_risk")
+    elif risk_percentage >= 30:
+        doc["tags"].append("moderate_risk")
+    else:
+        doc["tags"].append("low_risk")
+    
+    # Add course-based tag
+    if doc["course"]:
+        # Clean course name for tag
+        course_tag = doc["course"].lower().replace(" ", "_").replace("(", "").replace(")", "").replace("/", "_")
+        doc["tags"].append(f"course_{course_tag}")
+    
     try:
         ins = questions_col.insert_one(doc)
-        return {"id": str(ins.inserted_id)}, 201
+        print(f"[DEBUG] Saved assessment for user {uid}: Course={doc['course']}, Year={doc['year']}, Risk Score={risk_score}/{max_possible_score} ({risk_percentage:.1f}%)")
+        return {"id": str(ins.inserted_id), "riskScore": risk_score, "riskPercentage": risk_percentage, "riskLevel": doc["tags"][-2] if len(doc["tags"]) >= 2 else "unknown"}, 201
     except Exception as e:
+        print(f"[ERROR] Failed to save assessment: {e}")
         return {"msg": "Failed to save questions"}, 500
 
 @app.get("/questions")
 @jwt_required()
 def list_questions():
-    if not questions_col:
+    if questions_col is None:
         return {"msg": "Questions database unavailable"}, 503
         
     uid = get_jwt_identity()
@@ -230,8 +309,48 @@ def list_questions():
         items = []
         for d in questions_col.find({"userId": uid}).sort("_id", -1).limit(50):
             d["_id"] = str(d["_id"])
+            # Include user details in the response for backward compatibility
+            if "userEmail" not in d:
+                # For older records without user details, try to fetch from SQL
+                try:
+                    if engine:
+                        with engine.begin() as conn:
+                            user_row = conn.execute(text("SELECT email, name, age FROM users WHERE id=:id"), {"id": uid}).fetchone()
+                        if user_row:
+                            d["userEmail"] = user_row.email
+                            d["userName"] = user_row.name
+                            d["userAge"] = user_row.age
+                except Exception as e:
+                    print(f"[WARNING] Could not fetch user details for old record: {e}")
             items.append(d)
         return {"items": items}
+    except Exception as e:
+        return {"msg": "Failed to fetch questions"}, 500
+
+@app.get("/admin/questions")
+@jwt_required()
+def list_all_questions():
+    """Admin endpoint to fetch all question responses with user details"""
+    if questions_col is None:
+        return {"msg": "Questions database unavailable"}, 503
+        
+    try:
+        items = []
+        for d in questions_col.find({}).sort("_id", -1).limit(200):
+            d["_id"] = str(d["_id"])
+            # Ensure user details are included for all records
+            if "userEmail" not in d and engine:
+                try:
+                    with engine.begin() as conn:
+                        user_row = conn.execute(text("SELECT email, name, age FROM users WHERE id=:id"), {"id": d.get("userId")}).fetchone()
+                    if user_row:
+                        d["userEmail"] = user_row.email
+                        d["userName"] = user_row.name
+                        d["userAge"] = user_row.age
+                except Exception as e:
+                    print(f"[WARNING] Could not fetch user details for record: {e}")
+            items.append(d)
+        return {"items": items, "total": len(items)}
     except Exception as e:
         return {"msg": "Failed to fetch questions"}, 500
 
